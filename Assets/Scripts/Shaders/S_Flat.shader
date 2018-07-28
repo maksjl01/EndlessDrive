@@ -84,6 +84,7 @@
 					pow(max(0.0, dot(reflect(-lightDirection, normalDirection), viewDirection * hglType)), _Shininess);
 				}
 				
+
 				for (int i = 0; i < 3; i++)
 				{
 					o.pos = input[i].pos;

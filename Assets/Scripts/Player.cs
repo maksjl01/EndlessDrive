@@ -7,14 +7,17 @@ public class Player : MonoBehaviour {
 
     private static float health;
     public float MaxHealth = 120;
-    public float StartingHealth = 100;
+    public float StartingHealth;
+    private const float stHp = 120;
 
-    private static bool Dead;
+    public bool Dead;
     public static float score { get; private set; }
 
     public float healthLossRate = .08f;
     public float healthRegenRate = 0.3f;
     public float healthRegenDelay = 0.3f;
+
+    public bool startScoring;
 
     [Space]
     public float airTime;
@@ -23,6 +26,7 @@ public class Player : MonoBehaviour {
 
     private void Start()
     {
+        StartingHealth = 120;
         rover = GetComponent<Controller_Rover>();
         health = StartingHealth;
         score = 0;
@@ -34,8 +38,6 @@ public class Player : MonoBehaviour {
         if (OnGround())
         {
             health -= healthLossRate;
-            GameManager.instance.UpdateHealth(-healthLossRate);
-
             if (airTime != 0)
                 airTime = 0;
         }
@@ -48,10 +50,16 @@ public class Player : MonoBehaviour {
                 if (health < MaxHealth)
                 {
                     health += healthRegenRate;
-                    GameManager.instance.UpdateHealth(healthRegenRate);
                 }
             }
         }
+        GameManager.instance.UpdateHealth(health);
+    }
+
+    public void RestartGame()
+    {
+        health = StartingHealth;
+        score = 0;
     }
 
     void CheckHealth()
@@ -60,7 +68,8 @@ public class Player : MonoBehaviour {
         {
             MotorOff();
             Dead = true;
-            GameManager.instance.EndGame();
+            GameManager.instance.CheckHighScore(score);
+            StartCoroutine(GameManager.instance.EndGame());
             GameManager.playerDead = true;
         }
     }
@@ -89,14 +98,17 @@ public class Player : MonoBehaviour {
 
     private void FixedUpdate()
     {
-        UpdateHealth();
-        CheckHealth();
-        AccumulatePoints();
+        if (!Dead)
+        {
+            UpdateHealth();
+            CheckHealth();
+            if(Controller_Rover.startScoring)
+                AccumulatePoints();
+        }
     }
 
     void MotorOff()
     {
-        rover.RoverRigidBody.Sleep();
         rover.enabled = false;
     }
 

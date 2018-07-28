@@ -11,18 +11,33 @@ public class NoiseData : UpdatableData {
 	public float noiseScale;
 
 	public int octaves;
+    public bool randomOctave;
 	[Range(0,1)]
 	public float persistance;
+    public bool randomPersistance;
 	public float lacunarity;
+    public bool randomLacunarity;
 
 	public int seed;
-	public Vector2 offset;
-
     public bool randomSeed;
 
-	#if UNITY_EDITOR
+	public Vector2 offset;
 
-	protected override void OnValidate()
+    private void OnEnable()
+    {
+        if (randomSeed)
+            seed = Random.Range(0, 10000);
+        if (randomPersistance)
+            persistance = Random.Range(0.38f, 0.6f);
+        if (randomLacunarity)
+            lacunarity = Random.Range(1.8f, 2.13f);
+        if (randomOctave)
+            octaves = Random.Range(4, 6);
+    }
+
+#if UNITY_EDITOR
+
+    protected override void OnValidate()
 	{
 		if (lacunarity < 1)
 		{

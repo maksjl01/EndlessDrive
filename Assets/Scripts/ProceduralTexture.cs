@@ -83,8 +83,8 @@ public class ProceduralTexture : MonoBehaviour {
                 tex.SetPixel(x, y, new Color(colVal, colVal, colVal) * MainColor);
             }
         }
-        tex.Apply();
         tex.filterMode = FilterMode.Point;
+        tex.Apply();
     }
 
     public void GenerateSquares()
@@ -94,12 +94,13 @@ public class ProceduralTexture : MonoBehaviour {
         ApplyColor();
     }
 
-    public Texture2D GetSquaresTexture()
+    public Texture2D GetSquaresTexture(GameObject SplashScreen)
     {
         Setup();
         CalculateSquares(true);
         CalculateSquares(false);
         ApplyColor();
+        SplashScreen.SetActive(false);
         return tex;
     }
 }

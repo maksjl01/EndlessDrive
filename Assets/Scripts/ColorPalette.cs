@@ -1,30 +1,65 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
-public class ColorPalette : MonoBehaviour {
+[CreateAssetMenu()]
+public class ColorPalette : ScriptableObject {
 
-    public Color[] CurrentColorPalette;
-    public static ColorPalette instance;
+    public List<Color> Colors = new List<Color>();
 
-    private void Start()
+    private Color AmbientColor;
+
+    public ColorPalette(Color c0, Color c1, Color c2, Color c3)
     {
-        instance = this;
-        DontDestroyOnLoad(gameObject);
-        CurrentColorPalette = new Color[4];
+        Colors.Add(c0);
+        Colors.Add(c1);
+        Colors.Add(c2);
+        Colors.Add(c3);
     }
 
-    public void SetColors(Color col1, Color col2, Color col3, Color col4)
+    public ColorPalette (Color all)
     {
-        CurrentColorPalette[0] = col1;
-        CurrentColorPalette[1] = col2;
-        CurrentColorPalette[2] = col3;
-        CurrentColorPalette[3] = col4;
+        for (int i = 0; i < 4; i++)
+        {
+            Colors.Add(all);
+        }
     }
 
     public Color[] GetColors()
+    { 
+        return Colors.ToArray();
+    }
+
+    public void SetRandom()
     {
-        return CurrentColorPalette;
+        Colors = new List<Color>(4);
+        Colors.Add(Color.blue);
+        Colors.Add(Color.cyan);
+        Colors.Add(Color.green);
+        Colors.Add(Color.grey);
+    }
+
+    public void SetColors(Color c0, Color c1, Color c2, Color c3)
+    {
+        Colors = new List<Color>(4);
+        if (Colors.Count < 4)
+        {
+            Colors.Add(c0);
+            Colors.Add(c1);
+            Colors.Add(c2);
+            Colors.Add(c3);
+        }
+        else
+        {
+            Colors[0] = c0;
+            Colors[1] = c1;
+            Colors[2] = c2;
+            Colors[3] = c3;
+        }
+    }
+
+    public Color GetRandomColor()
+    {
+        int r = Random.Range(0, 4);
+        return Colors[r];
     }
 }

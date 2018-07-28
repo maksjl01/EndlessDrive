@@ -1,8 +1,7 @@
-﻿using UnityEngine;
-using System.Collections;
-using System;
+﻿using System.Collections.Generic;
 using System.Threading;
-using System.Collections.Generic;
+using UnityEngine;
+using System;
 
 public class MapGenerator : MonoBehaviour
 {
@@ -31,12 +30,10 @@ public class MapGenerator : MonoBehaviour
     Queue<MapThreadInfo<MeshData>> meshDataThreadInfoQueue = new Queue<MapThreadInfo<MeshData>>();
 
 
-    void Start ()
+    void Awake()
     {
         //textureData.ApplyToMaterial(terrainMaterial);
         //textureData.UpdateMeshHeights(terrainMaterial, terrainData.minHeight, terrainData.maxHeight);
-        if (noiseData.randomSeed)
-            noiseData.seed = UnityEngine.Random.Range(0, 10000);
     }
 
     void OnValuesUpdated()
@@ -188,10 +185,8 @@ public class MapGenerator : MonoBehaviour
         }
         if (textureData != null)
         {
-            //Uncomment if i want to use textureData instead of script
-
-            //textureData.OnValuesUpdated -= OnTextureValuesUpdated;
-            //textureData.OnValuesUpdated += OnTextureValuesUpdated;
+            textureData.OnValuesUpdated -= OnTextureValuesUpdated;
+            textureData.OnValuesUpdated += OnTextureValuesUpdated;
         }
 
     }

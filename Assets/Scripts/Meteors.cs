@@ -8,24 +8,26 @@ public class Meteors : MonoBehaviour {
 
     public METEORS[] meteors;
     public GameObject player;
-    public float meteorSpread = 1.5f;
-    public float chance = 0.1f;
+    float meteorSpread;
+    public float meteorSpreadMultiplier = 1;
+    public float startingChance = 0.1f;
+    public float chanceIncrease = 0.1f;
+    float chance;
     public float meteorStartHeight = 15;
     public float fallDelay = 0.5f;
-
     public float fallDelayDecrease = 0.1f;
-    public float chanceIncrease = 0.1f;
-
+    [Space]
     public GameObject marker;
 
     Queue<MeteorThreadInfo> meteorThreadQueue = new Queue<MeteorThreadInfo>();
 
-    private void Start()
+    private void OnEnable()
     {
         StartCoroutine(WaitThenStart());
         MapGenerator mapGen = FindObjectOfType<MapGenerator>();
-        float i = meteorSpread;
-        meteorSpread = mapGen.mapChunkSize * i;
+        meteorSpread = mapGen.mapChunkSize * meteorSpreadMultiplier;
+        chance = startingChance;
+        fallDelay = 0.4f;
     }
 
     IEnumerator WaitThenStart()
@@ -64,8 +66,11 @@ public class Meteors : MonoBehaviour {
 
     void MeteorFall(List<Vector3> _positions)
     {
-        fallDelay -= fallDelayDecrease;
+        if(fallDelay > 0)
+            fallDelay -= fallDelayDecrease;
         chance += chanceIncrease;
+        if(meteorSpread > 10)
+            meteorSpread -= 1f;
 
         StartCoroutine(Instantiate(_positions, fallDelay));
     }
@@ -88,7 +93,6 @@ public class Meteors : MonoBehaviour {
                     break;
                 }
             }
-            print(loop);
 
             GameObject inst = Instantiate(meteors[a].gameobject);
 
@@ -98,7 +102,6 @@ public class Meteors : MonoBehaviour {
             m.Damage = meteors[a].damage;
             m.marker = marker;
             m.transform.localScale = m.transform.localScale * meteors[a].size;
-            m.particleSystem = meteors[a].particleSystem ?? null;
             m.transform.localRotation = (meteors[a].randomRotation) ? Quaternion.Euler(UnityEngine.Random.Range(0, 360), UnityEngine.Random.Range(0, 360), UnityEngine.Random.Range(0, 360)) : Quaternion.identity;
 
             pos.RemoveAt(r);
@@ -142,6 +145,5 @@ public class Meteors : MonoBehaviour {
         public float damage;
         public bool randomSize;
         public bool randomRotation;
-        public ParticleSystem particleSystem;
     }
 }

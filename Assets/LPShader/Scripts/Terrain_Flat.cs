@@ -27,6 +27,8 @@ public class Terrain_Flat : MonoBehaviour {
 	public Color color;
 	public Color SpecularColor;
 	public int highlightType;
+    [Space]
+    public Color RecievedShadowColor;
 	[Space]
 
 	[Range(-5, 1)]
@@ -52,6 +54,7 @@ public class Terrain_Flat : MonoBehaviour {
 
     bool set;
     public bool randomOnStart;
+    public bool usePalette;
 
     public static Terrain_Flat instance;
 
@@ -72,6 +75,18 @@ public class Terrain_Flat : MonoBehaviour {
 
                 Heights[i] = heightval;
                 BlendLevels[i] = Random.Range(0.1f, 0.7f);
+            }
+        }
+
+        if (usePalette)
+        {
+            if (ColorPalettePersistance.instance != null)
+            {
+                ColorPalettePersistance col = FindObjectOfType<ColorPalettePersistance>();
+                for (int i = 0; i < BaseColorCount; i++)
+                {
+                    Colors[i] = col.CurrentColorPalette.Colors[i];
+                }
             }
         }
     }
@@ -169,6 +184,8 @@ public class Terrain_Flat : MonoBehaviour {
 			material.SetFloat("ShadowDarkness", ShadowDarkness);
 			material.SetColor("ShadowColor", ShadowColor);
 			material.SetFloat("ShadowColorMultiplier", ShadowColorMultiplier);
+
+            material.SetColor("recievedShadowColor", RecievedShadowColor);
 		}
 	}
 

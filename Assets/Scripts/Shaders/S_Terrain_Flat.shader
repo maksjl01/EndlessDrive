@@ -1,17 +1,24 @@
-﻿Shader "Custom/S_Flat"
+﻿// Upgrade NOTE: replaced '_Object2World' with 'unity_ObjectToWorld'
+
+// Upgrade NOTE: replaced '_World2Object' with 'unity_WorldToObject'
+
+Shader "Custom/S_Flat"
 {
 	SubShader
 	{
-		Tags{ "LightMode" = "ForwardBase"}
-		LOD 100
 
 		Pass
 		{	
-			Tags{ "Queue" = "Transparent" }
+			Tags{  "LightMode" = "ForwardBase" }
+
 			CGPROGRAM
+			#pragma target 4.0
+
 			#pragma vertex vert
 			#pragma geometry geom
 			#pragma fragment frag
+
+		
 
 			#include "UnityCG.cginc"
 			#include "Lighting.cginc"
@@ -52,6 +59,10 @@
 				return frac(sin(dot(co.xyz, float3(12.9898, 78.233, 45.5432))) * 43758.5453);
 			}
 
+			struct v {
+				float4 vertex: TEXCOORD0;
+			};
+
 			struct v2g
 			{
 				float2 uv : TEXCOORD0;
@@ -62,9 +73,9 @@
 
 			struct g2f {
 				float4 pos : SV_POSITION;
-				float2 uv : TEXCOORD2;
 				float4 col : COLOR0;
 				float3 light : TEXCOORD1;
+				float2 uv : TEXCOORD2;
 				float3 diffuseColor : TEXCOORD3;
 				float3 specularColor : TEXCOORD4;
 			};
@@ -148,8 +159,48 @@
 			fixed4 frag (g2f input) : SV_Target
 			{
 				float4 textureSample = tex2D(tex, input.uv);
-				return float4(input.diffuseColor + input.specularColor, 1) * input.col *  float4(input.light, 1);
-				//return float4(input.light, 1);
+				return float4(input.diffuseColor/* + input.specularColor*/, 1) * input.col *  float4(input.light, 1);
+			}
+			ENDCG
+		}
+
+		Pass
+		{
+			Tags{"LightMode" = "ForwardBase" "Queue"="Transparent" "RenderQueue"="Transparent"}
+			Blend SrcAlpha OneMinusSrcAlpha
+
+			CGPROGRAM
+			#pragma vertex vert
+			#pragma fragment frag
+
+			#pragma multi_compile_fwdbase	
+
+			#include "UnityCG.cginc"
+			#include "AutoLight.cginc"
+			#include "Lighting.cginc"
+
+			float4 recievedShadowColor;
+
+			struct v2f {
+				float4 pos : SV_POSITION;
+				float4 vertex : TEXCOORD3;
+				LIGHTING_COORDS(0,1)
+			};
+
+			v2f vert(appdata_base v) {
+				v2f o;
+				o.pos = UnityObjectToClipPos(v.vertex);
+				o.vertex = mul(unity_ObjectToWorld, v.vertex);
+				TRANSFER_VERTEX_TO_FRAGMENT(o);
+				return o;
+			}
+
+			fixed4 frag(v2f i) : COLOR
+			{
+				fixed atten = LIGHT_ATTENUATION(i);
+				if (atten > 0.1)
+					discard;
+				return recievedShadowColor * UNITY_LIGHTMODEL_AMBIENT * _LightColor0 * float4(1,1,1,0.75);
 			}
 			ENDCG
 		}

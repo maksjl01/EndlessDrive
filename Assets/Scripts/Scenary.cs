@@ -1,7 +1,7 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using System.Collections.Generic;
+using System.Collections;
 using System.Threading;
+using UnityEngine;
 using System;
 
 public class Scenary : MonoBehaviour{
@@ -15,8 +15,19 @@ public class Scenary : MonoBehaviour{
 
     Queue threadQueue = new Queue();
 
+    private void Awake()
+    {
+        boolList = new List<Vector3>();
+    }
+
+    private void Start()
+    {
+        StopAllCoroutines();
+    }
+
     public IEnumerator Threading(GameObject obj)
     {
+        print("Start threading scenary");
         yield return new WaitForSeconds(1f);
         Vector3[] vertices = obj.GetComponent<MeshFilter>().mesh.vertices;
         ThreadStart threadStart = new ThreadStart(delegate { Make(vertices.Length, vertices, obj); });
@@ -72,7 +83,7 @@ public class Scenary : MonoBehaviour{
                 if (!assets[r].randomSize)
                     inst.transform.localScale *= assets[r].size;
                 else
-                    inst.transform.localScale *= UnityEngine.Random.Range((assets[r].size / 2), (assets[r].size * 1.6f));
+                    inst.transform.localScale *= UnityEngine.Random.Range((assets[r].size / 1.75f), (assets[r].size * 1.6f));
 
                 if (assets[r].matchTerrainCol)
                 {
@@ -95,7 +106,8 @@ public class Scenary : MonoBehaviour{
             ThreadInformation TI = (ThreadInformation)threadQueue.Dequeue();
             TI.action(TI.vertices, TI.game, TI.posList);
             EndlessTerrain.startChunkCountSetup += 1;
-            if (EndlessTerrain.startChunkCountSetup > EndlessTerrain.instance.chunkInviewDST)
+            GameManager.instance.UpdateLoader();
+            if (EndlessTerrain.startChunkCountSetup > EndlessTerrain.instance.chunkInviewDST + 3)
                 GameManager.instance.ReadyScene();
         }
     }
@@ -122,7 +134,6 @@ public class Scenary : MonoBehaviour{
         public float size;
         public bool matchTerrainCol;
         public bool randomSize;
-        public float chance;
     }
 
     [System.Serializable]

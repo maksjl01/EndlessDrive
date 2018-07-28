@@ -1,6 +1,5 @@
-﻿using UnityEngine;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 public class EndlessTerrain : MonoBehaviour
 {
@@ -30,18 +29,25 @@ public class EndlessTerrain : MonoBehaviour
     public static EndlessTerrain instance;
     public int chunkInviewDST { get { return (chunksVisibleInViewDst * 2 - 1) * (chunksVisibleInViewDst * 2 - 1); } }
 
-    void Start()
+    private void Awake()
     {
+        visibleTerrainChunks = new List<TerrainChunk>();
+        terrainChunkDictionary = new Dictionary<Vector2, TerrainChunk>();
+
         instance = this;
         startChunkCountSetup = 0;
 
         mapGenerator = FindObjectOfType<MapGenerator>();
         scenary = FindObjectOfType<Scenary>();
 
-        maxViewDst = detailLevels[detailLevels.Length - 1].visibleDstThreshold /2;
+    }
+
+    void Start()
+    {
+
+        maxViewDst = detailLevels[detailLevels.Length - 1].visibleDstThreshold / 2;
         chunkSize = mapGenerator.mapChunkSize - 1;
         chunksVisibleInViewDst = Mathf.RoundToInt(maxViewDst / chunkSize);
-
         UpdateVisibleChunks();
 
         Terrain_Flat tF = FindObjectOfType<Terrain_Flat>();
@@ -97,7 +103,6 @@ public class EndlessTerrain : MonoBehaviour
                         StartCoroutine(scenary.Threading(chunk.meshObject));
                     }
                 }
-
             }
         }
     }
@@ -143,6 +148,7 @@ public class EndlessTerrain : MonoBehaviour
             meshObject.transform.position = positionV3 * mapGenerator.terrainData.uniformScale;
             meshObject.transform.parent = parent;
             meshObject.transform.localScale = Vector3.one * mapGenerator.terrainData.uniformScale;
+            meshObject.tag = "Terrain";
             SetVisible(false);
 
             lodMeshes = new LODMesh[detailLevels.Length];

@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class Meteor : MonoBehaviour {
 
-    public ParticleSystem particleSystem;
     private const string METEOR_TAG = "Meteor";
 
     public float Mass;
@@ -25,6 +24,8 @@ public class Meteor : MonoBehaviour {
             gameObject.AddComponent<MeshCollider>().convex = true;
 
         ProjectImageDown();
+
+        StartCoroutine(DeadCheck());
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -33,11 +34,28 @@ public class Meteor : MonoBehaviour {
         {
             Player.TakeDamage(Damage);
             print("car hit");
+        } else if(collision.gameObject.tag == "Terrain")
+        {
+            StartCoroutine(DelayedDestroy(0.2f));
         }
+    }
+
+    IEnumerator DelayedDestroy(float delay)
+    {
+        yield return new WaitForSeconds(delay);
         Destroy(localMarker);
         Destroy(gameObject);
     }
 
+    IEnumerator DeadCheck()
+    {
+        yield return new WaitForSeconds(9);
+        if (gameObject)
+        {
+            Destroy(gameObject);
+            Destroy(localMarker);
+        }
+    }
 
     void ProjectImageDown()
     {

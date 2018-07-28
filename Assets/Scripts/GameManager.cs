@@ -1,16 +1,13 @@
 ﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
+using UnityEngine;
 using UnityEditor;
-using System;
+using TMPro;
 
 public class GameManager : MonoBehaviour {
 
     public static bool playerDead;
     public static float playerHealth;
-    bool gameStarted;
 
     public Meteors meteors;
     public EndlessTerrain endlessTerrain;
@@ -19,7 +16,8 @@ public class GameManager : MonoBehaviour {
     Controller_Rover playerRover;
     public GameObject cam;
     public Transform cameraStartPos;
-    
+    public Transform cameraDeadScreenPos;
+    [Space]
 
     private Player playerComponent;
     public CarSelect[] carSelects;
@@ -37,6 +35,8 @@ public class GameManager : MonoBehaviour {
 
     private int currentCar;
     private int carAvailability;
+    private int controlSettings;
+    private float highScore;
 
     public static GameManager instance;
 
@@ -44,12 +44,14 @@ public class GameManager : MonoBehaviour {
 
     [Header("UI")]
     public GameObject controlPanel;
-    public GameObject menuPanel;
+    public Canvas menuCanvas;
     [Space]
     public GameObject ScoreGameObject;
     TextMeshProUGUI scoreText;
     [Space]
     public Slider healthSlider;
+    public Sprite[] AnimatedHealthImages;
+    public Image HeartImage;
     [Space]
     public GameObject CoinGameObject;
     public Image CoinImage;
@@ -57,15 +59,35 @@ public class GameManager : MonoBehaviour {
     [Space]
     public GameObject LoadingPanelGameObject;
     public Slider LoadingSlider;
+    public GameObject LoadingTextGameObject;
+    public Image LoadingBackground;
+    public GameObject DeadScreenGameObject;
+    public GameObject PauseScreenPanel;
+    public GameObject PriceGameObject;
+    [Space]
+    public Image[] controlButtonImages;
+    public GameObject HighScoreGameObject;
+    public GameObject ScoreEndScreenGameObject;
 
+    [Header("Cameras")]
+    public Camera UICamera;
 
-    private void OnEnable()
+    private Vector3 basePlateOffset;
+    GameObject parent;
+
+    private void Start()
     {
+        basePlateOffset = (Vector3.up * -0.75f) - (Vector3.forward * 1.25f);
+
+        QualitySettings.shadowDistance = 12;
+
         instance = this;
+
+        if (Time.timeScale != 1) Time.timeScale = 1;
+
 #if UNITY_EDITOR
         EditorApplication.ExecuteMenuItem("Edit/Graphics Emulation/No Emulation");
 #endif
-
         GetKeys();
         InstantiateCars();
 
@@ -73,10 +95,10 @@ public class GameManager : MonoBehaviour {
         playerRover = player.GetComponent<Controller_Rover>();
         meteors.enabled = playerComponent.enabled = false;
 
-
         SetupUI();
 
         cam.GetComponent<CameraControl>().enabled = false;
+        cam.GetComponent<CameraControl>().target = player;
         cam.transform.position = cameraStartPos.position;
 
         meteors.player = player;
@@ -84,55 +106,108 @@ public class GameManager : MonoBehaviour {
 
         player.tag = "Car";
 
-        gameStarted = false;
         playerDead = false;
     }
 
     void SetupUI()
     {
+        if (PlayerPrefs.HasKey("Coins"))
+        {
+            Coins = PlayerPrefs.GetInt("Coins");
+        }
+        else
+        {
+            Coins = 0;
+            PlayerPrefs.SetInt("Coins", Coins);
+        }
+
         if(controlPanel.activeSelf)
             controlPanel.SetActive(false);
+        PauseScreenPanel.SetActive(false);
+        LoadingPanelGameObject.SetActive(true);
+        DeadScreenGameObject.SetActive(false);
+        UICamera.enabled = false;
+
+        LoadingSlider.value = 0;
+        LoadingSlider.maxValue = endlessTerrain.chunkInviewDST;
+
+        if (ColorPalettePersistance.instance != null)
+            LoadingBackground.color = ColorPalettePersistance.instance.MenuColor;
 
         scoreText = ScoreGameObject.GetComponent<TextMeshProUGUI>();
         coinText = CoinGameObject.GetComponent<TextMeshProUGUI>();
         coinsOnMenuText = coinsOnMenu.GetComponent<TextMeshProUGUI>();
 
+        PriceGameObject.GetComponent<TextMeshProUGUI>().text = "";
+
         playerHealth = playerComponent.StartingHealth;
         healthSlider.maxValue = playerComponent.MaxHealth;
         coinText.text = coinsOnMenuText.text = Coins.ToString();
+        scoreText.text = "0";
 
         coinText.alpha = 0;
-        CoinImage.CrossFadeAlpha(0, 0, true);
+        CoinImage.enabled = false;
+
+        if(controlSettings == 0)
+        {
+            for (int i = 0; i < controlButtonImages.Length; i++)
+            {
+                controlButtonImages[i].color = new Color(0, 0, 0, 0);
+            }
+        }
+        else if(controlSettings == 1)
+        {
+            for (int i = 0; i < controlButtonImages.Length; i++)
+            {
+                controlButtonImages[i].color = new Color(1, 1, 1, 0.1f);
+                if(i > 1)
+                    controlButtonImages[i].preserveAspect = true;
+            }
+        }
     }
 
     void InstantiateCars()
     {
-        if (PlayerPrefs.HasKey("Car"))
-        {
-            currentCar = PlayerPrefs.GetInt("Car");
-        }
-        else
-        {
-            currentCar = 0;
-            PlayerPrefs.SetInt("Car", currentCar);
-        }
-
         cars = new GameObject[carSelects.Length];
         basePlates = new GameObject[carSelects.Length];
-        GameObject parent = new GameObject("Car Select");
+        parent = new GameObject("Car Select");
+        
         for (int i = 0; i < cars.Length; i++)
         {
             int index = (i+currentCar) % cars.Length;
             cars[index] = Instantiate(carSelects[index].car, CarStartPos.position + cam.transform.right * 25 * (i), Quaternion.identity, parent.transform); 
             cars[index].GetComponent<Rigidbody>().isKinematic = true;
-            basePlates[index] = Instantiate(carSelects[index].basePlate, CarStartPos.position + cam.transform.right * 25 * (i), Quaternion.identity, parent.transform);
-            basePlates[index].GetComponent<BasePlate>().car = cars[index].transform;
+
+            basePlates[index] = Instantiate(carSelects[index].basePlate, CarStartPos.position + basePlateOffset + cam.transform.right * 25 * (i), Quaternion.identity, parent.transform);
+
+            cars[index].transform.parent = basePlates[index].transform;
         } 
 
         player = cars[currentCar];
 
         selectButton.interactable = false;
         buyButton.interactable = false;
+    }
+
+    void ResetupCars()
+    {
+        for (int i = 0; i < parent.transform.childCount; i++)
+        {
+            RecursiveSetactive(parent.transform);
+            if(parent.transform.GetChild(i).transform.childCount == 0)
+            {
+                player.transform.parent = parent.transform.GetChild(i).transform;
+            }
+        }
+    }
+
+    void RecursiveSetactive(Transform parent)
+    {
+        parent.gameObject.SetActive(true);
+        foreach (Transform child in parent)
+        {
+            RecursiveSetactive(child);
+        }
     }
 
     void GetKeys()
@@ -156,22 +231,55 @@ public class GameManager : MonoBehaviour {
             Coins = 0;
             PlayerPrefs.SetInt("Coins", 0);
         }
+
+        if (PlayerPrefs.HasKey("Car"))
+        {
+            currentCar = PlayerPrefs.GetInt("Car");
+        }
+        else
+        {
+            PlayerPrefs.SetInt("Car", 0);
+            currentCar = 0;
+        }
+
+        if (PlayerPrefs.HasKey("ControlSettings"))
+        {
+            controlSettings = PlayerPrefs.GetInt("ControlSettings");
+        }
+        else
+        {
+            PlayerPrefs.SetInt("ControlSettings", 0);
+            controlSettings = 0;
+        }
+
+        if (PlayerPrefs.HasKey("HighScore"))
+        {
+            highScore = PlayerPrefs.GetFloat("HighScore");
+        }
+        else
+        {
+            PlayerPrefs.SetFloat("HighScore", 0);
+            highScore = 0;
+        }
     }
 
     public void ReadyScene()
     {
         LoadingPanelGameObject.SetActive(false);
+        UICamera.enabled = true;
     }
 
     public void StartGame()
     {
         playerComponent = player.GetComponent<Player>();
         playerRover = player.GetComponent<Controller_Rover>();
+        QualitySettings.shadowDistance = 86;
 
         for (int i = 0; i < cars.Length; i++)
         {
             if(cars[i] == player)
             {
+                basePlates[i].transform.GetChild(0).parent = null;
                 basePlates[i].gameObject.SetActive(false);
             }
             else
@@ -180,6 +288,9 @@ public class GameManager : MonoBehaviour {
                 cars[i].gameObject.SetActive(false);
             }
         }
+
+        menuCanvas.enabled = false;
+        UICamera.gameObject.SetActive(false);
 
         player.GetComponent<Rigidbody>().isKinematic = false;
         playerComponent.enabled = meteors.enabled = playerRover.enabled = true;
@@ -190,14 +301,81 @@ public class GameManager : MonoBehaviour {
         cam.GetComponent<CameraControl>().enabled = true;
         cam.GetComponent<CameraControl>().target = player;
 
-        menuPanel.SetActive(false);
+        meteors.player = player;
+
         controlPanel.SetActive(true);
-        gameStarted = true;
+        DeadScreenGameObject.SetActive(false);
+    }
+
+    public void ChangeCar()
+    {
+        UICamera.enabled = true;
+        DeadScreenGameObject.SetActive(false);
+        controlPanel.SetActive(false);
+        menuCanvas.enabled = true;
+
+        Destroy(player);
+        Destroy(parent);
+        InstantiateCars();
+
+        QualitySettings.shadowDistance = 12;
+
+        meteors.player = player;
+        endlessTerrain.viewer = player.transform;
+        player.tag = "Car";
+
+        cam.transform.position = cameraStartPos.position;
+        cam.transform.rotation = cameraStartPos.rotation;
+
+        playerComponent.enabled = meteors.enabled = false;
+        cam.GetComponent<CameraControl>().enabled = false;
+    }
+
+    public void RestartGame()
+    {
+        player.transform.position = CarStartPos.position;
+        playerComponent.enabled = meteors.enabled = playerRover.enabled = true;
+        healthSlider.value = playerComponent.StartingHealth;
+        playerComponent.Dead = false;
+        playerComponent.RestartGame();
+
+        UICamera.gameObject.SetActive(false);
+
+        controlPanel.SetActive(true);
+
+        DeadScreenGameObject.SetActive(false);
+        cam.GetComponent<CameraControl>().enabled = true;
+
+        Controller_Rover.startScoring = false;
+    }
+
+    public void TogglePause()
+    {
+        Time.timeScale = (Time.timeScale == 1) ? 0 : 1;
+        if (Time.timeScale == 0)
+            PauseScreenPanel.SetActive(true);
+        else
+            PauseScreenPanel.SetActive(false);
+    }
+
+    public void HomeScreen()
+    {
+        UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
     }
 
     public void UpdateHealth(float _health)
     {
-        healthSlider.value += _health;
+        healthSlider.value = _health;
+        float percent = healthSlider.value / healthSlider.maxValue;
+        Color lerped = Color.Lerp(new Color(0.2f, 1.0f, 0), new Color(1.0f, 0.27f, 0), 1 - percent);
+        healthSlider.fillRect.GetComponent<Image>().color = lerped;
+
+        float no = percent * 10;
+        no = Mathf.Round(no);
+        int index = 10 - (int)no;
+        if (index == 10)
+            index = 9;
+        HeartImage.sprite = AnimatedHealthImages[index];
     }
 
     public void UpdateScore(float _score)
@@ -210,22 +388,65 @@ public class GameManager : MonoBehaviour {
         Coins += add;
         coinText.text = Coins.ToString();
         StartCoroutine(FlashCoins());
-        //flash in and then back out so it is not always on
+    }
+
+    public void UpdateLoader()
+    {
+        LoadingSlider.value += 1;
+        LoadingTextGameObject.GetComponent<TextMeshProUGUI>().text = (LoadingSlider.value/LoadingSlider.maxValue * 100).ToString("f0") + "%";
     }
 
     IEnumerator FlashCoins()
     {
         coinText.alpha = 1;
-        CoinImage.CrossFadeAlpha(1, 0.5f, false);
-        yield return new WaitForSeconds(1);
+        CoinImage.enabled = true;
+        yield return new WaitForSeconds(2.5f);
         coinText.alpha = 0;
-        CoinImage.CrossFadeAlpha(0, 0.5f, false);
+        CoinImage.enabled = false;
     }
 
-    public void EndGame()
+    public IEnumerator EndGame()
     {
+        yield return new WaitForSeconds(1.5f);
+        PlayerPrefs.SetInt("Coins", Coins);
         playerRover.enabled = false;
-        PlayerPrefs.SetInt("Coins", Coins);   
+        cam.GetComponent<CameraControl>().enabled = false;
+        meteors.enabled = false;
+        controlPanel.SetActive(false);
+        meteors.StopAllCoroutines();
+
+        HighScoreGameObject.GetComponent<TextMeshProUGUI>().text = highScore.ToString("f1");
+
+        UICamera.gameObject.SetActive(true);
+
+        StartCoroutine(LerpCameraToEndScreenPos(2.5f, cam.transform.position, cam.transform.rotation));
+        p_t = 0;
+    }
+
+    public void CheckHighScore(float _score)
+    {
+        if(_score > highScore)
+        {
+            highScore = _score;
+            PlayerPrefs.SetFloat("HighScore", _score);
+        }
+        ScoreEndScreenGameObject.GetComponent<TextMeshProUGUI>().text = _score.ToString("f1");
+    }
+
+    private float p_t;
+    IEnumerator LerpCameraToEndScreenPos(float lerpTime, Vector3 camStartPos, Quaternion camStartRotation)
+    {
+        yield return new WaitForSeconds(1.5f);
+        while(cam.transform.position != cameraDeadScreenPos.position && cam.transform.rotation != cameraDeadScreenPos.rotation)
+        {
+            p_t += Time.deltaTime;
+            float t = p_t / lerpTime;
+            t = t * t * (3 - 2 * t);
+            cam.transform.position = Vector3.Lerp(camStartPos, cameraDeadScreenPos.position, t);
+            cam.transform.rotation = Quaternion.Lerp(camStartRotation, cameraDeadScreenPos.rotation, t);
+            yield return null;
+        }
+        DeadScreenGameObject.SetActive(true);
     }
 
     public void BuyCar()
@@ -301,55 +522,52 @@ public class GameManager : MonoBehaviour {
 
         if (currentCar == cars.Length - 1 && add == -1)
         {
-            StartCoroutine(SmoothLerp(lerpTime, CarStartPos.position, offsetPos, cars[0]));
-            StartCoroutine(SmoothLerp(lerpTime, CarStartPos.position, offsetPos, basePlates[0]));
+            StartCoroutine(SmoothLerp(lerpTime, CarStartPos.position + basePlateOffset, offsetPos, basePlates[0]));
         }
         else if (currentCar == 0 && add == 1)
         {
-            StartCoroutine(SmoothLerp(lerpTime, CarStartPos.position, offsetPosLt, cars[cars.Length - 1]));
-            StartCoroutine(SmoothLerp(lerpTime, CarStartPos.position, offsetPosLt, basePlates[cars.Length - 1]));
+            StartCoroutine(SmoothLerp(lerpTime, CarStartPos.position + basePlateOffset, offsetPosLt, basePlates[cars.Length - 1]));
         }
         else
         {
             if (add == 1)
             {
-                StartCoroutine(SmoothLerp(lerpTime, CarStartPos.position, offsetPosLt, cars[(currentCar - add) % cars.Length]));
-                StartCoroutine(SmoothLerp(lerpTime, CarStartPos.position, offsetPosLt, basePlates[(currentCar - add) % cars.Length]));
+                StartCoroutine(SmoothLerp(lerpTime, CarStartPos.position + basePlateOffset, offsetPosLt, basePlates[(currentCar - add) % cars.Length]));
             }
             else
             {
-                StartCoroutine(SmoothLerp(lerpTime, CarStartPos.position, offsetPos, cars[(currentCar - add) % cars.Length]));
-                StartCoroutine(SmoothLerp(lerpTime, CarStartPos.position, offsetPos, basePlates[(currentCar - add) % cars.Length]));
+                StartCoroutine(SmoothLerp(lerpTime, CarStartPos.position + basePlateOffset, offsetPos, basePlates[(currentCar - add) % cars.Length]));
             }
         }
 
         if (add == 1)
         {
-            StartCoroutine(SmoothLerp(lerpTime, offsetPos, CarStartPos.position, basePlates[currentCar]));
-            StartCoroutine(SmoothLerp(lerpTime, offsetPos, CarStartPos.position, cars[currentCar]));
+            StartCoroutine(SmoothLerp(lerpTime, offsetPos, CarStartPos.position + basePlateOffset, basePlates[currentCar]));
         }
         else
         {
-            StartCoroutine(SmoothLerp(lerpTime, offsetPosLt, CarStartPos.position, basePlates[currentCar]));
-            StartCoroutine(SmoothLerp(lerpTime, offsetPosLt, CarStartPos.position, cars[currentCar]));
+            StartCoroutine(SmoothLerp(lerpTime, offsetPosLt, CarStartPos.position + basePlateOffset, basePlates[currentCar]));
         }
 
-        if(player == cars[currentCar])
+        if (player == cars[currentCar])
         {
+            PriceGameObject.GetComponent<TextMeshProUGUI>().text = "";
             selectButton.interactable = false;
             buyButton.interactable = false;
         }
         else
         {
-            selectButton.interactable = true;
             if ((carAvailability & 1 << currentCar) == 1 << currentCar)
             {
+                PriceGameObject.GetComponent<TextMeshProUGUI>().text = "";
                 buyButton.interactable = false;
+                selectButton.interactable = true;
             }
             else
             {
-                selectButton.interactable = false;
+                PriceGameObject.GetComponent<TextMeshProUGUI>().text = "(" + carSelects[currentCar].price + ")";
                 buyButton.interactable = true;
+                selectButton.interactable = false;
             }
         }
     }
@@ -369,6 +587,15 @@ public class GameManager : MonoBehaviour {
             yield return null;
         }
         lerping = false;
+    }
+
+    void ChangeChildrenLayerRecursive(Transform trns, int layer)
+    {
+        trns.gameObject.layer = layer;
+        foreach (Transform child in trns)
+        {
+            ChangeChildrenLayerRecursive(child, layer);
+        }
     }
 
     [System.Serializable]
